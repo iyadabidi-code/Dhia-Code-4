@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ar">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Dhia Code 4 </title>
+<style>
+  :root{
+    --bg:#1e1e1e;--panel:#252526;--accent:#007acc;--text:#d4d4d4;--muted:#9aa0a6;
+  }
+  body.light{
+    --bg:#fafafa;--panel:#ffffff;--accent:#007acc;--text:#111;--muted:#555;
+  }
+  html,body{height:100%;margin:0;font-family:Inter, system-ui, "Segoe UI", Roboto, Arial;transition:background 0.3s,color 0.3s}
+  body{background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+  header{height:auto;display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:8px 12px;background:var(--panel)}
+  .brand{font-weight:700;color:var(--accent)}
+  .controls{display:flex;gap:8px;align-items:center}
+  input,select{padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:#111;color:var(--text)}
+  body.light input,body.light select{background:#fff;border:1px solid #ccc;color:#111}
+  button{padding:8px 10px;border-radius:6px;border:none;cursor:pointer;background:var(--accent);color:#fff}
+  main{flex:1;display:flex;min-height:0}
+  #editor{flex:1;height:100%}
+  .note{color:var(--muted);font-size:13px}
+  footer{height:auto;display:flex;align-items:center;padding:6px 12px;background:var(--panel);color:var(--muted)}
+</style>
+<script src="https://unpkg.com/monaco-editor@0.40.0/min/vs/loader.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand">Dhia Code 4</div>
+
+    <div class="controls">
+      <input id="filename" placeholder="اسم الملف" value="index" />
+      <select id="ext">
+        <option value="html">.html</option>
+        <option value="dha">.dha</option>
+      </select>
+      <button id="exportBtn">تصدير</button>
+      <button id="downloadPreview">معاينة</button>
+    </div>
+
+    <div class="controls" style="margin-left:auto">
+      <select id="langSelect">
+        <option value="ar">العربية</option>
+        <option value="en">English</option>
+        <option value="fr">Français</option>
+      </select>
+      <button id="themeToggle">🌙</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="editor"></div>
+  </main>
+
+  <footer>
+    <div class="note" id="footerText">يمكنك التبديل بين الوضع الليلي واللغات</div>
+  </footer>
+
+<script>
+  const texts = {
+    ar: {
+      export:'تصدير', preview:'معاينة', footer:'يمكنك التبديل بين الوضع الليلي واللغات', filename:'اسم الملف',
+    },
+    en: {
+      export:'Export', preview:'Preview', footer:'You can switch between dark mode and languages', filename:'File name',
+    },
+    fr: {
+      export:'Exporter', preview:'Aperçu', footer:'Vous pouvez changer le mode sombre et la langue', filename:'Nom du fichier',
+    }
+  };
+
+  const filenameInput = document.getElementById('filename');
+  const extSelect = document.getElementById('ext');
+  const exportBtn = document.getElementById('exportBtn');
+  const downloadPreview = document.getElementById('downloadPreview');
+  const langSelect = document.getElementById('langSelect');
+  const themeToggle = document.getElementById('themeToggle');
+  const footerText = document.getElementById('footerText');
+
+  let currentLang = 'ar';
+  langSelect.addEventListener('change', ()=>{
+    currentLang = langSelect.value;
+    const t = texts[currentLang];
+    exportBtn.textContent = t.export;
+    downloadPreview.textContent = t.preview;
+    footerText.textContent = t.footer;
+    filenameInput.placeholder = t.filename;
+  });
+
+  themeToggle.addEventListener('click', ()=>{
+    document.body.classList.toggle('light');
+    themeToggle.textContent = document.body.classList.contains('light') ? '☀️' : '🌙';
+    if(editor) monaco.editor.setTheme(document.body.classList.contains('light') ? 'vs' : 'vs-dark');
+  });
+
+  require.config({ paths: { 'vs': 'https://unpkg.com/monaco-editor@0.40.0/min/vs' }});
+  let editor;
+  require(['vs/editor/editor.main'], function() {
+    editor = monaco.editor.create(document.getElementById('editor'), {
+      value: '<!doctype html>\n<html>\n  <head><meta charset=\"utf-8\"><title>Dhia Preview</title></head>\n  <body>\n    <h1>مرحبا من Dhia Editor</h1>\n  </body>\n</html>',
+      language: 'html',
+      theme: 'vs-dark',
+      automaticLayout: true,
+      minimap: { enabled: false }
+    });
+  });
+
+  function downloadText(filename, text){
+    const blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  exportBtn.addEventListener('click', ()=>{
+    if(!editor) return alert('المحرر لم يتم تهيئته بعد');
+    const base = filenameInput.value.trim() || 'file';
+    const ext = extSelect.value;
+    downloadText(base + '.' + ext, editor.getValue());
+  });
+
+  downloadPreview.addEventListener('click', ()=>{
+    if(!editor) return alert('المحرر لم يتم تهيئته بعد');
+    const content = editor.getValue();
+    const html = /<html|<!doctype html|<body/i.test(content) ? content : `<!doctype html><html><body><pre>${escapeHtml(content)}</pre></body></html>`;
+    downloadText('preview.html', html);
+  });
+
+  function escapeHtml(s){ return s.replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  window.addEventListener('keydown', e=>{ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){ e.preventDefault(); exportBtn.click(); } });
+</script>
+</body>
+</html>
